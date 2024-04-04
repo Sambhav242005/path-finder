@@ -42,7 +42,11 @@ export default function Home() {
       newNodes.push(...nodes);
 
       const selectedNode = newNodes[node.row][node.col];
-      selectedNode.isBlock = true;
+      if (!selectedNode.isStart && !selectedNode.isFinish) {
+        selectedNode.isBlock = true;
+      } else {
+        alert("Cant set wall on start and finish point");
+      }
 
       setNodes(newNodes);
     }
@@ -92,7 +96,10 @@ export default function Home() {
         refPoint.row,
         refPoint.col
       );
-      if (distance < nearestPoint.distance) {
+      const node = nodes[point.row][point.col];
+      if (distance < nearestPoint.distance && !node.isPath) {
+        console.log(node);
+
         nearestPoint = { row: point.row, col: point.col, distance };
       }
     }
@@ -110,13 +117,23 @@ export default function Home() {
     const dy = y2 - y1;
     return Math.sqrt(dx * dx + dy * dy);
   }
+  const resetPaths = (currentGrid: Grid): Grid => {
+    // Clone the grid to avoid direct mutation
+    const newGrid = currentGrid.map((row) =>
+      row.map((node) => ({
+        ...node,
+        isPath: false, // Set isPath to false for each node
+      }))
+    );
+
+    return newGrid;
+  };
   function getNearbyPoints(
     start: { row: number; col: number },
     lastRow: number,
     lastCol: number
   ) {
     const { row, col } = start;
-    console.log(start);
 
     const nearbyPoints = [];
 
@@ -161,15 +178,69 @@ export default function Home() {
 
     return nearbyPoints;
   }
+  // const searchShortestPath = () => {
+  //   let isReach = false;
+  //   let tryToReach = 100;
+  //   let point = startPoint;
+  //   let newNodes = [...nodes]; // create a copy of nodes
+  //   let delay = 50; // delay in milliseconds
+
+  //   while (!isReach && tryToReach > 0) {
+  //     const nearby = getNearbyPoints(point, lastRow, lastCol);
+  //     if (nearby.length > 0) {
+  //       if (
+  //         nearby.some(
+  //           (p) => p.row === finishPoint.row && p.col === finishPoint.col
+  //         )
+  //       ) {
+  //         isReach = true;
+  //         break;
+  //       }
+  //       const { row, col } = findNearestPoint(nearby, finishPoint);
+  //       point = { row, col };
+  //       const selectNode = newNodes[row][col];
+  //       if (selectNode) {
+  //         console.log(row, col, selectNode);
+
+  //         setTimeout(() => {
+  //           newNodes[row][col].isPath = true;
+  //           setNodes([...newNodes]); // update the state with the new nodes
+  //         }, delay);
+  //         delay += 50; // increase the delay for the next node
+  //       }
+  //     } else break;
+
+  //     tryToReach--;
+  //   }
+
+  //   if (!isReach) {
+  //     setTimeout(() => {
+  //       alert("Dont Reach");
+  //     }, delay);
+  //   }
+  // };
   const searchShortestPath = () => {
     let isReach = false;
     let tryToReach = 100;
-    let point = startPoint;
-    let newNodes = [...nodes]; // create a copy of nodes
-    let delay = 400; // delay in milliseconds
+    let point = startPoint; // Assuming startPoint is defined elsewhere
+    let delay = 50; // Delay in milliseconds
 
-    while (!isReach && tryToReach > 0) {
-      const nearby = getNearbyPoints(point, lastRow, lastCol);
+    // Use a recursive function to handle asynchronous state updates
+    const search = async (
+      point: { row: number; col: number },
+      tryToReach: number,
+      delay: number
+    ) => {
+      if (isReach || tryToReach <= 0) {
+        if (!isReach) {
+          setTimeout(() => {
+            alert("Can't Reach");
+          }, delay);
+        }
+        return;
+      }
+
+      const nearby = getNearbyPoints(point, lastRow, lastCol); // Assuming getNearbyPoints is defined elsewhere
       if (nearby.length > 0) {
         if (
           nearby.some(
@@ -177,76 +248,31 @@ export default function Home() {
           )
         ) {
           isReach = true;
-          break;
+          // No need to break since we're in a recursive function
+        } else {
+          const { row, col } = findNearestPoint(nearby, finishPoint); // Assuming findNearestPoint is defined elsewhere
+          point = { row, col };
+          const selectNode = nodes[row][col]; // Directly use nodes from state
+          if (selectNode && !selectNode.isPath) {
+            await setTimeout(() => {
+              setNodes((prevNodes) => {
+                const newNodes = [...prevNodes];
+                newNodes[row][col] = { ...newNodes[row][col], isPath: true };
+                return newNodes;
+              });
+            }, delay);
+            delay += 50; // Increase the delay for the next node
+          }
         }
-        const { row, col } = findNearestPoint(nearby, finishPoint);
-        point = { row, col };
-        if (newNodes[row][col]) {
-          setTimeout(() => {
-            newNodes[row][col].isPath = true;
-            setNodes([...newNodes]); // update the state with the new nodes
-          }, delay);
-          delay += 200; // increase the delay for the next node
-        }
-      } else {
-        alert("Dont reach it");
-        break;
       }
 
-      tryToReach--;
-    }
-
-    if (!isReach) {
-      setTimeout(() => {
-        alert("Dont Reach");
-      }, delay);
-    }
-  };
-  // Assuming necessary imports and setup are done above
-
-  function findPath() {
-    let isReach = false;
-    let tryToReach = 100; // Arbitrary number of attempts
-    let delay = 0;
-    let point = startPoint;
-    let newNodes = [] as Grid;
-
-    const updateNodes = (row: number, col: number, delay: number) => {
-      setTimeout(() => {
-        newNodes[row][col].isPath = true;
-        setNodes([...newNodes]); // Correctly creating a new array for the state update
-      }, delay);
+      // Recursively call search with updated parameters
+      search(point, tryToReach - 1, delay);
     };
 
-    while (!isReach && tryToReach > 0) {
-      const nearby = getNearbyPoints(point, lastRow, lastCol);
-      if (nearby.length > 0) {
-        if (
-          nearby.some(
-            (p) => p.row === finishPoint.row && p.col === finishPoint.col
-          )
-        ) {
-          isReach = true;
-          break;
-        }
-        const { row, col } = findNearestPoint(nearby, finishPoint);
-        point = { row, col };
-        if (newNodes[row][col]) {
-          updateNodes(row, col, delay); // Using a function to handle the timeout logic
-          delay += 200; // Increase the delay for the next node
-        }
-      } else {
-        tryToReach = 0;
-        break;
-      }
-
-      tryToReach--;
-    }
-
-    if (!isReach) {
-      setTimeout(() => alert("Can't Reach"), delay); // Corrected grammar
-    }
-  }
+    // Start the search
+    search(point, tryToReach, delay);
+  };
 
   return (
     <>
@@ -263,6 +289,14 @@ export default function Home() {
             </SelectContent>
           </Select>
           <Button onClick={() => setChange(!change)}>Restart!</Button>
+          <Button
+            onClick={() => {
+              const newNode = resetPaths(nodes);
+              setNodes(newNode);
+            }}
+          >
+            Reset!
+          </Button>
         </div>
         <div>
           <div className="bg-slate-400 grid gap-0 mx-auto w-fit p-3">
