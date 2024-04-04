@@ -28,6 +28,7 @@ export default function Home() {
   const [select, setSelect] = useState("");
   const [startPoint, setStart] = useState({ row: 10, col: 5 });
   const [finishPoint, setFinish] = useState({ row: 10, col: 45 });
+  const [change, setChange] = useState(false);
 
   const [node, setNode] = useState({ col: 0, row: 0 });
 
@@ -72,7 +73,7 @@ export default function Home() {
       newNodes.push(currentRow);
     }
     setNodes(newNodes);
-  }, [startPoint, finishPoint]);
+  }, [startPoint, finishPoint, change]);
 
   function findNearestPoint(
     points: (typeof startPoint)[],
@@ -250,7 +251,7 @@ export default function Home() {
   return (
     <>
       <div>
-        <div className="p-4">
+        <div className="p-4 flex gap-5">
           <Select onValueChange={(value) => setSelect(value)}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select" />
@@ -261,6 +262,7 @@ export default function Home() {
               <SelectItem value="wall">Wall</SelectItem>
             </SelectContent>
           </Select>
+          <Button onClick={() => setChange(!change)}>Restart!</Button>
         </div>
         <div>
           <div className="bg-slate-400 grid gap-0 mx-auto w-fit p-3">
